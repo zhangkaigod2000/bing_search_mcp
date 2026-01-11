@@ -78,8 +78,14 @@ def main():
     print(f"MCP 配置参数:")
     print(json.dumps(config_params, indent=2, ensure_ascii=False))
     
-    # 使用http_app属性，这是FastMCP库推荐的现代替代方案
-    uvicorn.run(mcp.http_app, host="0.0.0.0", port=config.MCP_PORT)
+    # 使用streamable-http传输协议，配置为仅返回JSON响应，避免406错误
+    app = mcp.http_app(
+        path="/mcp",
+        transport="streamable-http",
+        json_response=True,
+        stateless_http=True
+    )
+    uvicorn.run(app, host="0.0.0.0", port=config.MCP_PORT)
 
 
 if __name__ == "__main__":
