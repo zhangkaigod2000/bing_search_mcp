@@ -1,0 +1,14 @@
+# Bing 搜索 MCP Server 配置文件示例
+# 复制此文件为 config.yaml 并修改以自定义配置
+
+# LLM 服务配置
+LLM_BASE_URL: "http://192.168.3.153:11434/v1"  # LLM 服务地址
+LLM_MODEL: "qwen3:14b"                           # LLM 模型名称
+
+# MCP Server 配置
+MCP_PORT: 8903                                    # MCP Server 监听端口
+
+# 搜索配置
+MAX_RETRY: 3                                      # 搜索和提取失败重试次数
+TOP_K: 5                                          # 搜索结果返回数量
+MAX_TOKEN: 150                                    # 摘要最大长度
