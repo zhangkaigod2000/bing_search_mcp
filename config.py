@@ -14,7 +14,7 @@ class Config:
             "MAX_TOKEN": 150,
             "TIMEOUT": 30000,  # 30秒超时
             "MAX_ITER": 3,     # 最大迭代次数
-            "BING_URL": "https://www.bing.com",
+            "BING_URL": "https://cn.bing.com",
             "HEADLESS": True   # 无头浏览器模式
         }
         
