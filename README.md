@@ -1,0 +1,2 @@
+# bing_search_mcp
+mcp搜索很多需要token，很麻烦，使用playwright配合bing搜索，配合LLM分析提取实现网络信息查询的mcp
