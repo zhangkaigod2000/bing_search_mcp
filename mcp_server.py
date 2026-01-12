@@ -78,14 +78,18 @@ def main():
     print(f"MCP 配置参数:")
     print(json.dumps(config_params, indent=2, ensure_ascii=False))
     
-    # 使用streamable-http传输协议，配置为仅返回JSON响应，避免406错误
+    # 使用http_app，配置为仅返回JSON响应，同时支持带和不带尾部斜杠的路径
     app = mcp.http_app(
         path="/mcp",
-        transport="streamable-http",
         json_response=True,
         stateless_http=True
     )
-    uvicorn.run(app, host="0.0.0.0", port=config.MCP_PORT)
+    # 运行uvicorn服务器
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=config.MCP_PORT
+    )
 
 
 if __name__ == "__main__":

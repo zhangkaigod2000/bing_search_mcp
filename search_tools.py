@@ -67,7 +67,14 @@ class BingSearchTool:
         """使用requests库直接发送HTTP请求搜索Bing"""
         results = []
         try:
-            search_url = f"{config.BING_URL}/search?q={keywords}"
+            # 过滤无效字符，只保留有效的搜索关键词
+            # 移除#、*、"等特殊字符，只保留中文、英文、数字和常用标点
+            import re
+            filtered_keywords = re.sub(r'[#*"<>|%^&\(\)\[\]{}\\|]+', '', keywords)
+            filtered_keywords = filtered_keywords.strip()
+            print(f"过滤后的关键词: {filtered_keywords}")
+            
+            search_url = f"{config.BING_URL}/search?q={filtered_keywords}"
             print(f"使用requests访问搜索URL: {search_url}")
             
             # 设置headers模拟浏览器
@@ -159,13 +166,20 @@ class BingSearchTool:
         """搜索Bing，先尝试Playwright，失败则使用requests"""
         results = []
         
+        # 过滤无效字符，只保留有效的搜索关键词
+        # 移除#、*、"等特殊字符，只保留中文、英文、数字和常用标点
+        import re
+        filtered_keywords = re.sub(r'[#*"<>|%^&\(\)\[\]{}|]+', '', keywords)
+        filtered_keywords = filtered_keywords.strip()
+        print(f"过滤后的关键词: {filtered_keywords}")
+        
         # 1. 先尝试使用Playwright搜索
         for attempt in range(config.MAX_RETRY):
             try:
                 page = await self._get_page()
                 
                 # 直接构建搜索URL
-                search_url = f"{config.BING_URL}/search?q={keywords}"
+                search_url = f"{config.BING_URL}/search?q={filtered_keywords}"
                 print(f"直接访问搜索URL: {search_url}")
                 
                 await page.goto(search_url, timeout=config.TIMEOUT)
@@ -218,70 +232,12 @@ class BingSearchTool:
             except Exception as e:
                 print(f"Playwright搜索失败 (尝试 {attempt + 1}/{config.MAX_RETRY}): {e}")
         
-        # 2. 如果Playwright失败，使用requests作为备选
-        print("Playwright搜索失败，尝试使用requests搜索...")
-        results = self._search_bing_with_requests(keywords, top_k)
-        
-        # 3. 如果requests也失败，使用预设的测试数据作为备选
+        # 2. 如果Playwright失败或没有结果，使用requests作为备选
         if not results:
-            print("requests搜索失败，使用预设测试数据...")
-            # 预设的工厂质量管理相关搜索结果
-            test_results = [
-                SearchResult(
-                    title="工厂全面质量管理：生产质量管理流程、制度、质量标准",
-                    summary="工厂全面质量管理是确保产品质量的关键，包括生产质量管理流程、质量管理制度、质量标准制定等方面。",
-                    link="https://example.com/factory-quality-management"
-                ),
-                SearchResult(
-                    title="工厂质量管理必备：五大工具与七大方法精简指南",
-                    summary="工厂质量管理需要掌握五大工具和七大方法，包括SPC、MSA、FMEA、APQP、PPAP等工具。",
-                    link="https://example.com/quality-management-tools"
-                ),
-                SearchResult(
-                    title="工厂品质管理流程的主要步骤有哪些?",
-                    summary="工厂品质管理流程包括质量标准设定、原材料检验、生产过程控制、成品检验等主要步骤。",
-                    link="https://example.com/quality-control-process"
-                ),
-                SearchResult(
-                    title="如何提升工厂生产质量管理？",
-                    summary="提升工厂生产质量管理需要从人员培训、设备维护、流程优化等多个方面入手。",
-                    link="https://example.com/improve-quality-management"
-                ),
-                SearchResult(
-                    title="小型制造业工厂质量管理体系实施指南",
-                    summary="小型制造业工厂实施质量管理体系需要结合自身特点，逐步建立适合的质量管理制度。",
-                    link="https://example.com/small-factory-quality-system"
-                ),
-                SearchResult(
-                    title="工厂质量体系全面解析，内容与重要性",
-                    summary="工厂质量体系包括ISO9001等国际标准，对提升产品质量和企业竞争力具有重要意义。",
-                    link="https://example.com/quality-system-overview"
-                ),
-                SearchResult(
-                    title="工厂如何做好质量管理",
-                    summary="工厂做好质量管理需要建立完善的质量管理制度，加强过程控制，持续改进。",
-                    link="https://example.com/how-to-do-quality-management"
-                ),
-                SearchResult(
-                    title="工厂生产过程中如何把控产品质量",
-                    summary="在生产过程中把控产品质量需要从原料采购、生产工艺、检验测试等环节入手。",
-                    link="https://example.com/control-product-quality"
-                ),
-                SearchResult(
-                    title="工厂质量管理软件解决方案",
-                    summary="现代工厂质量管理需要借助软件系统，实现质量数据的采集、分析和追溯。",
-                    link="https://example.com/quality-management-software"
-                ),
-                SearchResult(
-                    title="工厂质量管理培训课程",
-                    summary="工厂质量管理培训包括质量意识、质量管理工具、质量体系等方面的内容。",
-                    link="https://example.com/quality-management-training"
-                )
-            ]
-            
-            # 根据关键词过滤测试数据
-            if "工厂质量管理" in keywords or "新能源车" in keywords:
-                results = test_results[:top_k]
+            print("Playwright搜索失败或没有结果，尝试使用requests搜索...")
+            results = self._search_bing_with_requests(keywords, top_k)
+        
+        # 移除模拟数据备用方案，确保只返回真实搜索结果
         
         # 处理结果，提取内容
         valid_results = []
