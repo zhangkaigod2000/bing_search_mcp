@@ -67,7 +67,7 @@ class BingSearchTool:
         if self.playwright:
             await self.playwright.stop()
 
-    async def _get_page(self) -> Page:
+    async def _get_page(self, max_retries: int = 10) -> Page:
         if not self.context:
             await self.init()
         
@@ -91,8 +91,16 @@ class BingSearchTool:
         
         # 如果已达到最大页面数量，等待并复用
         # 这里采用简单的等待机制，实际生产环境可以考虑使用队列或事件
-        await asyncio.sleep(1)  # 等待1秒后重试
-        return await self._get_page()
+        if max_retries > 0:
+            await asyncio.sleep(0.5)  # 等待0.5秒后重试，减少等待时间
+            return await self._get_page(max_retries - 1)
+        else:
+            # 达到最大重试次数，返回一个错误或创建新页面
+            # 这里我们选择直接创建新页面，避免无限等待
+            print("已达到最大重试次数，创建新页面")
+            page = await self.context.new_page()
+            self.active_pages.add(page)
+            return page
         
     async def _release_page(self, page: Page):
         """释放页面，将其放回页面池或关闭"""
