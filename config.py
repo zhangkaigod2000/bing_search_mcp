@@ -15,7 +15,8 @@ class Config:
             "TIMEOUT": 30000,  # 30秒超时
             "MAX_ITER": 3,     # 最大迭代次数
             "BING_URL": "https://cn.bing.com",
-            "HEADLESS": True   # 无头浏览器模式
+            "HEADLESS": True,  # 无头浏览器模式
+            "MAX_PAGES": 5     # 最大页面数量，控制Chrome进程数量
         }
         
         # 加载本地配置文件

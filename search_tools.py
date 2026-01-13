@@ -29,6 +29,9 @@ class BingSearchTool:
         self.playwright = None
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
+        self.page_pool: List[Page] = []  # 页面池，用于复用页面
+        self.active_pages: Set[Page] = set()  # 正在使用的页面
+        self.max_pages = config.MAX_PAGES  # 最大页面数量
 
     async def init(self):
         if self.playwright is None:
@@ -51,6 +54,12 @@ class BingSearchTool:
             )
 
     async def close(self):
+        # 关闭所有页面
+        for page in self.page_pool:
+            await page.close()
+        for page in self.active_pages:
+            await page.close()
+        # 关闭上下文和浏览器
         if self.context:
             await self.context.close()
         if self.browser:
@@ -61,7 +70,49 @@ class BingSearchTool:
     async def _get_page(self) -> Page:
         if not self.context:
             await self.init()
-        return await self.context.new_page()
+        
+        # 优先从页面池获取可用页面
+        if self.page_pool:
+            page = self.page_pool.pop()
+            self.active_pages.add(page)
+            return page
+        
+        # 获取当前浏览器上下文的实际页面数量
+        def get_current_page_count():
+            """获取当前浏览器上下文的实际页面数量"""
+            # Playwright的BrowserContext没有直接的页面数量属性，我们需要通过active_pages和page_pool来计算
+            return len(self.active_pages) + len(self.page_pool)
+        
+        # 如果未达到最大页面数量，创建新页面
+        if get_current_page_count() < self.max_pages:
+            page = await self.context.new_page()
+            self.active_pages.add(page)
+            return page
+        
+        # 如果已达到最大页面数量，等待并复用
+        # 这里采用简单的等待机制，实际生产环境可以考虑使用队列或事件
+        await asyncio.sleep(1)  # 等待1秒后重试
+        return await self._get_page()
+        
+    async def _release_page(self, page: Page):
+        """释放页面，将其放回页面池或关闭"""
+        if page in self.active_pages:
+            self.active_pages.remove(page)
+            
+            # 如果页面池未满，将页面放回页面池
+            if len(self.page_pool) < self.max_pages:
+                try:
+                    # 重置页面状态
+                    await page.goto("about:blank")
+                    await page.wait_for_load_state("load")
+                    self.page_pool.append(page)
+                except Exception as e:
+                    # 重置失败，关闭页面
+                    print(f"重置页面失败，关闭页面: {e}")
+                    await page.close()
+            else:
+                # 页面池已满，关闭页面
+                await page.close()
 
     def _search_bing_with_requests(self, keywords: str, top_k: int = 5) -> List[SearchResult]:
         """使用requests库直接发送HTTP请求搜索Bing"""
@@ -228,7 +279,7 @@ class BingSearchTool:
                 except Exception as e:
                     print(f"Playwright获取结果失败: {e}")
                 
-                await page.close()
+                await self._release_page(page)
             except Exception as e:
                 print(f"Playwright搜索失败 (尝试 {attempt + 1}/{config.MAX_RETRY}): {e}")
         
@@ -270,7 +321,7 @@ class BingSearchTool:
                 
                 # 尝试获取HTML内容，处理页面导航问题
                 html = await page.content()
-                await page.close()
+                await self._release_page(page)
                 
                 # 过滤广告内容
                 if any(ad in html.lower() for ad in ['广告', 'advertisement', 'sponsored', '推广', 'promoted']):
@@ -306,7 +357,7 @@ class BingSearchTool:
                 
                 # 处理页面导航问题
                 if "navigating and changing the content" in str(e):
-                    await page.close()
+                    await self._release_page(page)
                     continue
                 
                 if attempt == config.MAX_RETRY - 1:

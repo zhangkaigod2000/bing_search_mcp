@@ -12,3 +12,4 @@ MCP_PORT: 8903                                    # MCP Server 监听端口
 MAX_RETRY: 3                                      # 搜索和提取失败重试次数
 TOP_K: 5                                          # 搜索结果返回数量
 MAX_TOKEN: 150                                    # 摘要最大长度
+TIMEOUT: 500
